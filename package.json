@@ -1,0 +1,8 @@
+{
+  "name": "local-git-workbench",
+  "version": "1.0.0",
+  "private": true,
+  "description": "网页预览与本地 Git 状态工作台",
+  "scripts": { "start": "node server.mjs" },
+  "engines": { "node": ">=20" }
+}
