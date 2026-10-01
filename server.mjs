@@ -27,25 +27,61 @@ function parseStatus(raw) {
 }
 
 async function snapshot() {
-  const [raw, branch, branches, head] = await Promise.all([
+  const [raw, branch, references, head] = await Promise.all([
     git('status', '--porcelain=v1', '-z'),
     git('symbolic-ref', '--short', 'HEAD').catch(() => git('rev-parse', '--short', 'HEAD')),
-    git('for-each-ref', '--format=%(refname:short)', 'refs/heads'),
+    git('for-each-ref', '--format=%(objectname)%00%(refname:short)', 'refs/heads'),
     git('rev-parse', '--verify', '--quiet', 'HEAD').catch(error => {
       if (error.code === 1) return ''; throw error;
     }),
   ]);
-  const history = head.trim() ? await git('log', '-20', '--format=%h%x00%s%x00%an%x00%aI') : '';
+  const refs = references.trim().split('\n').filter(Boolean).map(row => {
+    const [hash, name] = row.split('\0'); return { hash, name };
+  });
+  const history = head.trim() ? await git('log', '--all', '--topo-order', '-60', '--format=%H%x00%P%x00%s%x00%an%x00%aI%x1e') : '';
   return { repository: path.basename(root), branch: branch.trim(),
-    branches: branches.trim().split('\n').filter(Boolean), files: parseStatus(raw),
-    commits: history.trim().split('\n').filter(Boolean).map(row => {
-      const [hash, subject, author, date] = row.split('\0'); return { hash, subject, author, date };
-    }), head: head.trim().slice(0, 7), updatedAt: new Date().toISOString() };
+    branches: refs.map(ref => ref.name), files: parseStatus(raw),
+    commits: history.split('\x1e').map(row => row.trim()).filter(Boolean).map(row => {
+      const [hash, parents, subject, author, date] = row.split('\0');
+      return { hash, shortHash: hash.slice(0, 7), parents: parents.split(' ').filter(Boolean), subject, author, date,
+        refs: refs.filter(ref => ref.hash === hash).map(ref => ref.name), isHead: hash === head.trim() };
+    }), head: head.trim(), historyLimit: 60, updatedAt: new Date().toISOString() };
+}
+
+async function resolveCommit(hash) {
+  if (!/^[a-f0-9]{7,64}$/i.test(hash || '')) {
+    throw Object.assign(new Error('无效的提交编号。'), { status: 400 });
+  }
+  try { return (await git('rev-parse', '--verify', `${hash}^{commit}`)).trim(); }
+  catch { throw Object.assign(new Error('找不到这个提交。'), { status: 404 }); }
+}
+
+async function commitDetails(hash) {
+  const sha = await resolveCommit(hash);
+  const raw = await git('show', '-s', '--format=%H%x00%P%x00%s%x00%an%x00%ae%x00%aI%x00%B', sha);
+  const [id, parentList, subject, author, email, date, message] = raw.split('\0');
+  const parents = parentList.split(' ').filter(Boolean);
+  const diff = parents.length ? ['diff', '--no-renames', parents[0], sha] : ['diff-tree', '--root', '--no-commit-id', '-r', '--no-renames', sha];
+  const [changes, stats, previewAvailable] = await Promise.all([
+    git(...diff.slice(0, 1), '--name-status', '-z', ...diff.slice(1), '--'),
+    git(...diff.slice(0, 1), '--numstat', '-z', ...diff.slice(1), '--'),
+    git('cat-file', '-e', `${sha}:preview.html`).then(() => true).catch(() => false),
+  ]);
+  const records = changes.split('\0'), files = [];
+  const counts = new Map(stats.split('\0').filter(Boolean).map(row => {
+    const first = row.indexOf('\t'), second = row.indexOf('\t', first + 1);
+    return [row.slice(second + 1), { additions: row.slice(0, first), deletions: row.slice(first + 1, second) }];
+  }));
+  for (let i = 0; i < records.length - 1; i += 2) {
+    if (records[i]) files.push({ status: records[i], path: records[i + 1], ...counts.get(records[i + 1]) });
+  }
+  return { hash: id, shortHash: id.slice(0, 7), parents, subject, author, email, date, message: message.trimEnd(), files, previewAvailable };
 }
 
 const publicFiles = new Map([
   ['/', ['index.html', 'text/html']], ['/index.html', ['index.html', 'text/html']],
   ['/style.css', ['style.css', 'text/css']], ['/app.js', ['app.js', 'text/javascript']],
+  ['/graph.mjs', ['graph.mjs', 'text/javascript']],
   ['/preview.html', ['preview.html', 'text/html']],
 ]);
 const server = http.createServer(async (req, res) => {
@@ -61,10 +97,21 @@ const server = http.createServer(async (req, res) => {
           req.headers['sec-fetch-site'] === 'cross-site') {
         res.writeHead(403); res.end('Forbidden'); return;
       }
-      const data = url.pathname === '/api/git' ? await snapshot() : null;
+      const data = url.pathname === '/api/git' ? await snapshot() :
+        url.pathname === '/api/commit' ? await commitDetails(url.searchParams.get('hash')) : null;
       if (!data) { res.writeHead(404); res.end('Not found'); return; }
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(data)); return;
+    }
+    const version = url.pathname.match(/^\/version\/([a-f0-9]{7,64})\/preview\.html$/i);
+    if (version) {
+      const sha = await resolveCommit(version[1]);
+      let page;
+      try { page = await git('show', `${sha}:preview.html`); }
+      catch { throw Object.assign(new Error('这个提交没有可预览的 preview.html。'), { status: 404 }); }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8',
+        'Content-Security-Policy': "sandbox allow-scripts; frame-ancestors 'self'" });
+      res.end(page); return;
     }
     if (url.pathname === '/favicon.ico') { res.writeHead(204); res.end(); return; }
     const resource = publicFiles.get(url.pathname);

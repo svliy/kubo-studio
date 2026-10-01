@@ -29,9 +29,10 @@
   <main class="workbench">
     <section class="preview-pane" aria-label="网页预览">
       <div class="pane-heading"><div><span class="eyebrow">YOUR CANVAS</span><h1>让想法，出现在眼前<span class="purple-dot">.</span></h1><p>一边构建网页，一边看见每一次变化。</p></div><span class="project-tag" id="project-tag">personal-site</span></div>
-      <div class="preview-toolbar"><span class="toolbar-label"><i class="live-dot"></i> 网页预览</span><div class="device-toggle" role="group" aria-label="预览尺寸"><button class="active" id="desktop-button" title="桌面预览" aria-label="桌面预览" aria-pressed="true"><svg><use href="#i-monitor"/></svg></button><button id="mobile-button" title="手机预览" aria-label="手机预览" aria-pressed="false"><svg><use href="#i-phone"/></svg></button></div><button class="icon-button" id="reload-preview" title="刷新网页" aria-label="刷新网页"><svg><use href="#i-refresh"/></svg></button><a class="icon-button" href="/preview.html" target="_blank" rel="noopener" title="新窗口打开" aria-label="新窗口打开预览"><svg><use href="#i-external"/></svg></a></div>
+      <div class="preview-toolbar"><span class="toolbar-label"><i class="live-dot" id="preview-dot"></i> <span id="preview-mode">工作区实时预览</span></span><div class="device-toggle" role="group" aria-label="预览尺寸"><button class="active" id="desktop-button" title="桌面预览" aria-label="桌面预览" aria-pressed="true"><svg><use href="#i-monitor"/></svg></button><button id="mobile-button" title="手机预览" aria-label="手机预览" aria-pressed="false"><svg><use href="#i-phone"/></svg></button></div><button class="icon-button" id="reload-preview" title="刷新网页" aria-label="刷新网页"><svg><use href="#i-refresh"/></svg></button><a class="icon-button" id="open-preview" href="/preview.html" target="_blank" rel="noopener" title="新窗口打开" aria-label="新窗口打开预览"><svg><use href="#i-external"/></svg></a></div>
+      <div class="version-banner" id="version-banner" hidden><span><svg><use href="#i-clock"/></svg><span id="version-description"></span></span><button id="return-working">返回工作区 <span>↗</span></button></div>
       <div class="browser-shell"><div class="browser-bar"><div class="traffic-lights"><i></i><i></i><i></i></div><span class="address"><span class="address-lock">⌘</span> <span id="preview-address">/preview.html</span></span><span class="browser-menu">•••</span></div><div class="iframe-stage" id="iframe-stage"><iframe id="preview-frame" src="/preview.html" title="当前项目网页预览"></iframe></div></div>
-      <div class="preview-caption"><span>编辑 preview.html 后，刷新即可查看</span><span id="viewport-label">桌面视图</span></div>
+      <div class="preview-caption"><span id="preview-hint">编辑 preview.html 后，刷新即可查看</span><span id="viewport-label">桌面视图</span></div>
     </section>
 
     <div class="splitter" aria-hidden="true"></div>
@@ -39,14 +40,18 @@
     <aside class="git-pane" aria-label="Git 版本控制">
       <div class="git-heading"><div class="git-title"><span class="git-logo"><svg><use href="#i-branch"/></svg></span><div><h2>版本控制</h2><p>每一步变化，都有迹可循</p></div></div><button class="icon-button" id="refresh-git" aria-label="刷新 Git 状态" title="刷新 Git 状态"><svg><use href="#i-refresh"/></svg></button></div>
       <div class="repo-card"><div class="repo-label"><span class="repo-square"><svg><use href="#i-code"/></svg></span><div><strong id="repo-name">personal-site</strong><small>LOCAL REPOSITORY</small></div><span class="repo-status" id="repo-status">连接中</span></div><div class="repo-bottom"><span class="branch-pill"><svg><use href="#i-branch"/></svg><span id="branch-name">—</span></span><span class="head-label" id="head-label">读取仓库中</span></div></div>
-      <div class="summary-grid"><div><span class="stat-dot amber"></span><span>工作区</span><strong id="working-count">—</strong></div><div><span class="stat-dot purple"></span><span>暂存区</span><strong id="staged-count">—</strong></div><div><span class="stat-dot green"></span><span>近期提交</span><strong id="commit-count">—</strong></div></div>
-      <div class="git-tabs" role="tablist" aria-label="Git 信息分类"><button role="tab" aria-selected="true" aria-controls="git-content" class="active" data-tab="working">工作区 <span id="working-badge">0</span></button><button role="tab" aria-selected="false" aria-controls="git-content" data-tab="staged">暂存区 <span id="staged-badge">0</span></button><button role="tab" aria-selected="false" aria-controls="git-content" data-tab="history">提交记录</button></div>
+      <div class="summary-grid"><div><span class="stat-dot amber"></span><span>工作区</span><strong id="working-count">—</strong></div><div><span class="stat-dot purple"></span><span>暂存区</span><strong id="staged-count">—</strong></div><div><span class="stat-dot green"></span><span>历史提交</span><strong id="commit-count">—</strong></div></div>
+      <div class="git-tabs" role="tablist" aria-label="Git 信息分类"><button role="tab" aria-selected="true" aria-controls="git-content" class="active" data-tab="history">提交历史</button><button role="tab" aria-selected="false" aria-controls="git-content" data-tab="working">工作区 <span id="working-badge">0</span></button><button role="tab" aria-selected="false" aria-controls="git-content" data-tab="staged">暂存区 <span id="staged-badge">0</span></button></div>
       <div class="git-content" id="git-content" role="tabpanel" aria-live="polite"><div class="empty-state"><span class="loading-orbit"></span><h3>正在读取仓库</h3><p>马上就好。</p></div></div>
-      <div class="git-bottom"><div class="workflow-label">GIT WORKFLOW <span>从想法到版本</span></div><div class="workflow"><div><span class="workflow-number">01</span><strong>工作区</strong><small>修改文件</small></div><svg><use href="#i-arrow"/></svg><div><span class="workflow-number">02</span><strong>暂存区</strong><small>准备提交</small></div><svg><use href="#i-arrow"/></svg><div><span class="workflow-number">03</span><strong>本地仓库</strong><small>记录版本</small></div></div><p class="read-only-note"><svg><use href="#i-check"/></svg> 状态实时读取 · 每 5 秒自动刷新</p></div>
+      <section class="commit-detail" id="commit-detail" aria-label="选中的提交详情" hidden>
+        <div class="detail-heading"><h3 id="detail-subject"></h3><button class="icon-button" id="close-detail" aria-label="关闭提交详情"><svg><use href="#i-close"/></svg></button></div>
+        <div id="detail-body"></div>
+      </section>
+      <div class="git-bottom"><p class="graph-legend"><span><i class="legend-node purple"></i> 提交节点</span><span><i class="legend-line"></i> 分支 / 合并关系</span></p><p class="read-only-note"><svg><use href="#i-check"/></svg> 每 5 秒同步 · 点击提交，查看历史版本</p></div>
     </aside>
   </main>
   <footer class="statusbar"><span id="connection-status"><i class="live-dot"></i> 正在连接本地仓库</span><span class="statusbar-center">A little space to build something good.</span><span id="updated-time">等待同步</span></footer>
   <div class="toast" id="toast" role="status" hidden></div>
-  <script src="/app.js" defer></script>
+  <script src="/app.js" type="module"></script>
 </body>
 </html>
